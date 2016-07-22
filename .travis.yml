@@ -4,6 +4,8 @@ go:
   - 1.6
   - tip
 install:
+ - go get github.com/google/gopacket
+ - go get github.com/google/gopacket/layers
  - go get github.com/chifflier/nfqueue-go/nfqueue
 before_install:
   - sudo apt-get -qq update

@@ -3,7 +3,7 @@ package main
 import (
     "encoding/hex"
     "fmt"
-    "nfqueue"
+    "github.com/chifflier/nfqueue-go/nfqueue"
     "os"
     "os/signal"
     "syscall"
