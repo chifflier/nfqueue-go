@@ -1,3 +1,11 @@
+// Go bindings for the NFQUEUE netfilter target
+// libnetfilter_queue is a userspace library providing an API to access packets
+// that have been queued by the Linux kernel packet filter.
+//
+// This provides an easy way to filter packets from userspace, and use tools
+// or libraries that are not accessible from kernelspace.
+//
+// BUG(nfqueue): This package currently displays lots of debug information
 package nfqueue
 
 // XXX we should use something like
@@ -51,7 +59,6 @@ int c_nfq_cb(struct nfq_q_handle *qh,
         return -1;
     }
 
-
     return GoCallbackWrapper(data, id, payload_data, payload_len);
 }
 */
@@ -73,9 +80,15 @@ var NF_QUEUE = C.NF_QUEUE
 var NF_REPEAT = C.NF_REPEAT
 var NF_STOP = C.NF_STOP
 
-
+// Prototype for a NFQUEUE callback.
+// The callback receives the NFQUEUE ID of the packet, and
+// the packet payload.
+// Packet data start from the IP layer (ethernet information are not included).
+// It must return the verdict for the packet.
 type Callback func(uint32,[]byte) int
 
+// Queue is an opaque structure describing a connection to a kernel NFQUEUE,
+// and the associated Go callback.
 type Queue struct {
     c_h (*C.struct_nfq_handle)
     c_qh (*C.struct_nfq_q_handle)
@@ -83,6 +96,8 @@ type Queue struct {
     cb Callback
 }
 
+// Init creates a netfilter queue which can be used to receive packets
+// from the kernel.
 func (q *Queue) Init() error {
     log.Println("Opening queue")
     q.c_h = C.nfq_open()
@@ -93,6 +108,7 @@ func (q *Queue) Init() error {
     return nil
 }
 
+// SetCallback sets the callback function, fired when a packet is received.
 func (q *Queue) SetCallback(cb Callback) error {
     q.cb = cb
     return nil
@@ -106,6 +122,9 @@ func (q *Queue) Close() {
     }
 }
 
+// Bind binds a Queue to a given protocol family.
+//
+// Usually, the family is syscall.AF_INET for IPv4, and syscall.AF_INET6 for IPv6
 func (q *Queue) Bind(af_family int) error {
     if (q.c_h == nil) {
         return ErrNotInitialized
@@ -119,6 +138,9 @@ func (q *Queue) Bind(af_family int) error {
     return nil
 }
 
+// Unbind a queue from the given protocol family.
+//
+// Note that errors from this function can usually be ignored.
 func (q *Queue) Unbind(af_family int) error {
     if (q.c_h == nil) {
         return ErrNotInitialized
@@ -132,9 +154,15 @@ func (q *Queue) Unbind(af_family int) error {
     return nil
 }
 
-// Set callback function
+// Create a new queue handle
+//
+// The queue must be initialized (using Init) and bound (using Bind), and
+// a callback function must be set (using SetCallback).
 func (q *Queue) CreateQueue(queue_num int) error {
     if (q.c_h == nil) {
+        return ErrNotInitialized
+    }
+    if (q.cb == nil) {
         return ErrNotInitialized
     }
     log.Println("Creating queue")
@@ -146,7 +174,10 @@ func (q *Queue) CreateQueue(queue_num int) error {
     return nil
 }
 
-// Main loop
+// Main loop: TryRun starts an infinite loop, receiving kernel events
+// and processing packets using the callback function.
+//
+// BUG(TryRun): The TryRun function really is an infinite loop.
 func (q *Queue) TryRun() error {
     if (q.c_h == nil) {
         return ErrNotInitialized
@@ -170,6 +201,9 @@ func (q *Queue) TryRun() error {
 }
 
 
+// SetVerdict issues a verdict for a packet.
+//
+// Every queued packet _must_ have a verdict specified by userspace.
 func (q *Queue) SetVerdict(id uint32, verdict int) error {
     log.Printf("Setting verdict for packet %d: %d\n",id,verdict)
     C.nfq_set_verdict(q.c_qh,C.u_int32_t(id),C.u_int32_t(verdict),0,nil)

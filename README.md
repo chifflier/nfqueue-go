@@ -13,7 +13,7 @@ It is important to note that these bindings will not follow blindly libnetfilter
 To use the library, a program must
 - open a queue
 - bind to a network family (`AF_PACKET` for IPv4)
-- provide a callback function, which will be automatically called when a packet is received
+- provide a callback function, which will be automatically called when a packet is received. The callback must return a verdict
 - create the queue, providing the queue number (which must match the `--queue-num` from the iptables rules, see below
 - run a loop, waiting for events. The program should also provide a clean way to exit the loop (for ex on `SIGINT`)
 
