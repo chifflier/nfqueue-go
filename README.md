@@ -14,6 +14,12 @@ To use the library, a program must
 - create the queue, providing the queue number (which must match the `--queue-num` from the iptables rules, see below
 - run a loop, waiting for events. The program should also provide a clean way to exit the loop (for ex on `SIGINT`)
 
+## Using library
+
+```
+import "github.com/chifflier/nfqueue-go/nfqueue"
+```
+
 ## Example
 
 See [test_nfqueue](nfqueue/test_nfqueue/test_nfqueue.go) for a minimal example, and [test_nfqueue_gopacket](nfqueue/test_nfqueue_gopacket/test_nfqueue.go) for an example using the [gopacket](https://github.com/google/gopacket) library to decode the packets.
