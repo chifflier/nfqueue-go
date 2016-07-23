@@ -26,11 +26,11 @@ verdict. This works, and avoids packets without verdict to be queued, but
 prevents using out-of-order replies.
 */
 //export GoCallbackWrapper
-func GoCallbackWrapper(ptr_q *unsafe.Pointer, id uint32, data *unsafe.Pointer, payload_len int) int {
+func GoCallbackWrapper(ptr_q *unsafe.Pointer, ptr_nfad *unsafe.Pointer) int {
     q := (*Queue)(unsafe.Pointer(ptr_q))
-    payload := C.GoBytes(unsafe.Pointer(data), C.int(payload_len))
-    verdict := q.cb(id,payload)
-    q.SetVerdict(id,verdict)
+    payload := build_payload(ptr_nfad)
+    verdict := q.cb(payload)
+    q.SetVerdict(payload.Id,verdict)
     return 0
 }
 

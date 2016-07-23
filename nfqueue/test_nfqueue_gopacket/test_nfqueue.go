@@ -12,12 +12,12 @@ import (
     "github.com/google/gopacket/layers"
 )
 
-func real_callback(id uint32, payload []byte) int {
+func real_callback(payload *nfqueue.Payload) int {
     fmt.Println("Real callback")
-    fmt.Printf("  id: %d\n", id)
-    fmt.Println(hex.Dump(payload))
+    fmt.Printf("  id: %d\n", payload.Id)
+    fmt.Println(hex.Dump(payload.Data))
     // Decode a packet
-    packet := gopacket.NewPacket(payload, layers.LayerTypeIPv4, gopacket.Default)
+    packet := gopacket.NewPacket(payload.Data, layers.LayerTypeIPv4, gopacket.Default)
     // Get the TCP layer from this packet
     if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
         fmt.Println("This is a TCP packet!")

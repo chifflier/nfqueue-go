@@ -19,7 +19,7 @@ package nfqueue
 #include <linux/netfilter.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
-extern int GoCallbackWrapper(void *data, int id, unsigned char*, int len);
+extern int GoCallbackWrapper(void *data, void *nfad);
 
 int _process_loop(struct nfq_handle *h,
                   int fd,
@@ -44,22 +44,7 @@ int _process_loop(struct nfq_handle *h,
 int c_nfq_cb(struct nfq_q_handle *qh,
              struct nfgenmsg *nfmsg,
              struct nfq_data *nfad, void *data) {
-    int id = 0;
-    struct nfqnl_msg_packet_hdr *ph;
-    unsigned char *payload_data;
-    int payload_len;
-
-    ph = nfq_get_msg_packet_hdr(nfad);
-    if (ph){
-        id = ntohl(ph->packet_id);
-    }
-
-    if ((payload_len = nfq_get_payload(nfad, &payload_data)) < 0) {
-        fprintf(stderr, "Couldn't get payload\n");
-        return -1;
-    }
-
-    return GoCallbackWrapper(data, id, payload_data, payload_len);
+    return GoCallbackWrapper(data, nfad);
 }
 */
 import "C"
@@ -85,7 +70,7 @@ var NF_STOP = C.NF_STOP
 // the packet payload.
 // Packet data start from the IP layer (ethernet information are not included).
 // It must return the verdict for the packet.
-type Callback func(uint32,[]byte) int
+type Callback func(*Payload) int
 
 // Queue is an opaque structure describing a connection to a kernel NFQUEUE,
 // and the associated Go callback.
@@ -208,4 +193,56 @@ func (q *Queue) SetVerdict(id uint32, verdict int) error {
     log.Printf("Setting verdict for packet %d: %d\n",id,verdict)
     C.nfq_set_verdict(q.c_qh,C.u_int32_t(id),C.u_int32_t(verdict),0,nil)
     return nil
+}
+
+// Payload is a structure describing a packet received from the kernel
+type Payload struct {
+    nfad *C.struct_nfq_data
+
+    // NFQueue ID of the packet
+    Id uint32
+    // Packet data
+    Data []byte
+}
+
+func build_payload(ptr_nfad *unsafe.Pointer) *Payload {
+    nfad := (*C.struct_nfq_data)(unsafe.Pointer(ptr_nfad))
+
+    ph := C.nfq_get_msg_packet_hdr(nfad)
+    id := C.ntohl(C.uint32_t(ph.packet_id))
+    var payload_data *C.uchar
+    payload_len := C.nfq_get_payload(nfad, &payload_data)
+    data := C.GoBytes(unsafe.Pointer(payload_data), C.int(payload_len))
+
+    p := new(Payload)
+    p.nfad = nfad
+    p.Id = uint32(id)
+    p.Data = data
+
+    return p
+}
+
+// Returns the packet mark
+func (p *Payload) GetNFMark() uint32 {
+    return uint32(C.nfq_get_nfmark(p.nfad))
+}
+
+// Returns the interface that the packet was received through
+func (p *Payload) GetInDev() uint32 {
+    return uint32(C.nfq_get_indev(p.nfad))
+}
+
+// Returns the interface that the packet will be routed out
+func (p *Payload) GetOutDev() uint32 {
+    return uint32(C.nfq_get_outdev(p.nfad))
+}
+
+// Returns the physical interface that the packet was received through
+func (p *Payload) GetPhysInDev() uint32 {
+    return uint32(C.nfq_get_physindev(p.nfad))
+}
+
+// Returns the physical interface that the packet will be routed out
+func (p *Payload) GetPhysOutDev() uint32 {
+    return uint32(C.nfq_get_physoutdev(p.nfad))
 }

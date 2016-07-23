@@ -9,10 +9,13 @@ import (
     "syscall"
 )
 
-func real_callback(id uint32, payload []byte) int {
+func real_callback(payload *nfqueue.Payload) int {
     fmt.Println("Real callback")
-    fmt.Printf("  id: %d\n", id)
-    fmt.Println(hex.Dump(payload))
+    fmt.Printf("  id: %d\n", payload.Id)
+    fmt.Printf("  mark: %d\n", payload.GetNFMark())
+    fmt.Printf("  in  %d      out  %d\n", payload.GetInDev(), payload.GetOutDev())
+    fmt.Printf("  Φin %d      Φout %d\n", payload.GetPhysInDev(), payload.GetPhysOutDev())
+    fmt.Println(hex.Dump(payload.Data))
     fmt.Println("-- ")
     return nfqueue.NF_ACCEPT
 }
