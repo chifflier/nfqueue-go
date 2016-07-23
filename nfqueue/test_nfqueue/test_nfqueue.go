@@ -32,6 +32,7 @@ func main() {
     q.Bind(syscall.AF_INET)
 
     q.CreateQueue(0)
+    q.SetMode(nfqueue.NFQNL_COPY_PACKET)
 
     c := make(chan os.Signal, 1)
     signal.Notify(c, os.Interrupt)

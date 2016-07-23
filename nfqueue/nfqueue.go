@@ -65,6 +65,10 @@ var NF_QUEUE = C.NF_QUEUE
 var NF_REPEAT = C.NF_REPEAT
 var NF_STOP = C.NF_STOP
 
+var NFQNL_COPY_NONE uint8   = C.NFQNL_COPY_NONE
+var NFQNL_COPY_META uint8   = C.NFQNL_COPY_META
+var NFQNL_COPY_PACKET uint8 = C.NFQNL_COPY_PACKET
+
 // Prototype for a NFQUEUE callback.
 // The callback receives the NFQUEUE ID of the packet, and
 // the packet payload.
@@ -156,6 +160,22 @@ func (q *Queue) CreateQueue(queue_num int) error {
         log.Println("nfq_create_queue failed")
         return ErrRuntime
     }
+    // Default mode
+    C.nfq_set_mode(q.c_qh,C.NFQNL_COPY_PACKET,0xffff)
+    return nil
+}
+
+// SetMode sets the amount of packet data that nfqueue copies to userspace
+//
+// Default mode is NFQNL_COPY_PACKET
+func (q *Queue) SetMode(mode uint8) error {
+    if (q.c_h == nil) {
+        return ErrNotInitialized
+    }
+    if (q.c_qh == nil) {
+        return ErrNotInitialized
+    }
+    C.nfq_set_mode(q.c_qh,C.u_int8_t(mode),0xffff)
     return nil
 }
 
@@ -180,7 +200,6 @@ func (q *Queue) TryRun() error {
         return ErrRuntime
     }
     // XXX
-    C.nfq_set_mode(q.c_qh,C.NFQNL_COPY_PACKET,0xffff)
     C._process_loop(q.c_h,fd,0,-1)
     return nil
 }
@@ -206,13 +225,17 @@ type Payload struct {
 }
 
 func build_payload(ptr_nfad *unsafe.Pointer) *Payload {
+    var payload_data *C.uchar
+    var data []byte
+
     nfad := (*C.struct_nfq_data)(unsafe.Pointer(ptr_nfad))
 
     ph := C.nfq_get_msg_packet_hdr(nfad)
     id := C.ntohl(C.uint32_t(ph.packet_id))
-    var payload_data *C.uchar
     payload_len := C.nfq_get_payload(nfad, &payload_data)
-    data := C.GoBytes(unsafe.Pointer(payload_data), C.int(payload_len))
+    if (payload_len >= 0) {
+        data = C.GoBytes(unsafe.Pointer(payload_data), C.int(payload_len))
+    }
 
     p := new(Payload)
     p.nfad = nfad
