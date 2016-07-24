@@ -21,11 +21,11 @@ import (
 // SetVerdictMark issues a verdict for a packet, but a mark can be set
 //
 // Every queued packet _must_ have a verdict specified by userspace.
-func (q *Queue) SetVerdictMark(id uint32, verdict int, mark uint32) error {
-    log.Printf("Setting verdict for packet %d: %d mark %lx\n",id,verdict,mark)
+func (p *Payload) SetVerdictMark(verdict int, mark uint32) error {
+    log.Printf("Setting verdict for packet %d: %d mark %lx\n",p.Id,verdict,mark)
     C.nfq_set_verdict2(
-        q.c_qh,
-        C.u_int32_t(id),
+        p.c_qh,
+        C.u_int32_t(p.Id),
         C.u_int32_t(verdict),
         C.u_int32_t(mark),
         0,nil)
@@ -36,11 +36,11 @@ func (q *Queue) SetVerdictMark(id uint32, verdict int, mark uint32) error {
 // packet with the provided one, and a mark can be set.
 //
 // Every queued packet _must_ have a verdict specified by userspace.
-func (q *Queue) SetVerdictMarkModified(id uint32, verdict int, mark uint32, data []byte) error {
-    log.Printf("Setting verdict for NEW packet %d: %d mark %lx\n",id,verdict,mark)
+func (p *Payload) SetVerdictMarkModified(verdict int, mark uint32, data []byte) error {
+    log.Printf("Setting verdict for NEW packet %d: %d mark %lx\n",p.Id,verdict,mark)
     C.nfq_set_verdict2(
-        q.c_qh,
-        C.u_int32_t(id),
+        p.c_qh,
+        C.u_int32_t(p.Id),
         C.u_int32_t(verdict),
         C.u_int32_t(mark),
         C.u_int32_t(len(data)),

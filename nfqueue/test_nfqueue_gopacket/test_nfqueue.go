@@ -31,7 +31,8 @@ func real_callback(payload *nfqueue.Payload) int {
         fmt.Println(gopacket.LayerDump(layer))
     }
     fmt.Println("-- ")
-    return nfqueue.NF_ACCEPT
+    payload.SetVerdict(nfqueue.NF_ACCEPT)
+    return 0
 }
 
 func main() {

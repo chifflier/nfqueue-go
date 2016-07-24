@@ -17,7 +17,8 @@ func real_callback(payload *nfqueue.Payload) int {
     fmt.Printf("  Φin %d      Φout %d\n", payload.GetPhysInDev(), payload.GetPhysOutDev())
     fmt.Println(hex.Dump(payload.Data))
     fmt.Println("-- ")
-    return nfqueue.NF_ACCEPT
+    payload.SetVerdict(nfqueue.NF_ACCEPT)
+    return 0
 }
 
 func main() {

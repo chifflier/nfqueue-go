@@ -212,33 +212,9 @@ func (q *Queue) TryRun() error {
 }
 
 
-// SetVerdict issues a verdict for a packet.
-//
-// Every queued packet _must_ have a verdict specified by userspace.
-func (q *Queue) SetVerdict(id uint32, verdict int) error {
-    log.Printf("Setting verdict for packet %d: %d\n",id,verdict)
-    C.nfq_set_verdict(q.c_qh,C.u_int32_t(id),C.u_int32_t(verdict),0,nil)
-    return nil
-}
-
-// SetVerdictModified issues a verdict for a packet, but replaces the packet
-// with the provided one.
-//
-// Every queued packet _must_ have a verdict specified by userspace.
-func (q *Queue) SetVerdictModified(id uint32, verdict int, data []byte) error {
-    log.Printf("Setting verdict for NEW packet %d: %d\n",id,verdict)
-    C.nfq_set_verdict(
-        q.c_qh,
-        C.u_int32_t(id),
-        C.u_int32_t(verdict),
-        C.u_int32_t(len(data)),
-        (*C.uchar)(unsafe.Pointer(&data[0])),
-    )
-    return nil
-}
-
 // Payload is a structure describing a packet received from the kernel
 type Payload struct {
+    c_qh (*C.struct_nfq_q_handle)
     nfad *C.struct_nfq_data
 
     // NFQueue ID of the packet
@@ -247,7 +223,7 @@ type Payload struct {
     Data []byte
 }
 
-func build_payload(ptr_nfad *unsafe.Pointer) *Payload {
+func build_payload(c_qh *C.struct_nfq_q_handle, ptr_nfad *unsafe.Pointer) *Payload {
     var payload_data *C.uchar
     var data []byte
 
@@ -261,11 +237,37 @@ func build_payload(ptr_nfad *unsafe.Pointer) *Payload {
     }
 
     p := new(Payload)
+    p.c_qh = c_qh
     p.nfad = nfad
     p.Id = uint32(id)
     p.Data = data
 
     return p
+}
+
+// SetVerdict issues a verdict for a packet.
+//
+// Every queued packet _must_ have a verdict specified by userspace.
+func (p *Payload) SetVerdict(verdict int) error {
+    log.Printf("Setting verdict for packet %d: %d\n",p.Id,verdict)
+    C.nfq_set_verdict(p.c_qh,C.u_int32_t(p.Id),C.u_int32_t(verdict),0,nil)
+    return nil
+}
+
+// SetVerdictModified issues a verdict for a packet, but replaces the packet
+// with the provided one.
+//
+// Every queued packet _must_ have a verdict specified by userspace.
+func (p *Payload) SetVerdictModified(verdict int, data []byte) error {
+    log.Printf("Setting verdict for NEW packet %d: %d\n",p.Id,verdict)
+    C.nfq_set_verdict(
+        p.c_qh,
+        C.u_int32_t(p.Id),
+        C.u_int32_t(verdict),
+        C.u_int32_t(len(data)),
+        (*C.uchar)(unsafe.Pointer(&data[0])),
+    )
+    return nil
 }
 
 // Returns the packet mark

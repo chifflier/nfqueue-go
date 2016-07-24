@@ -28,10 +28,8 @@ prevents using out-of-order replies.
 //export GoCallbackWrapper
 func GoCallbackWrapper(ptr_q *unsafe.Pointer, ptr_nfad *unsafe.Pointer) int {
     q := (*Queue)(unsafe.Pointer(ptr_q))
-    payload := build_payload(ptr_nfad)
-    verdict := q.cb(payload)
-    q.SetVerdict(payload.Id,verdict)
-    return 0
+    payload := build_payload(q.c_qh, ptr_nfad)
+    return q.cb(payload)
 }
 
 
