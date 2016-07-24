@@ -46,6 +46,13 @@ int c_nfq_cb(struct nfq_q_handle *qh,
              struct nfq_data *nfad, void *data) {
     return GoCallbackWrapper(data, nfad);
 }
+
+// wrap nfq_get_payload so cgo always have the same prototype
+// (libnetfilter_queue 0.17 uses a signed char)
+static int _c_get_payload (struct nfq_data *nfad, unsigned char **data)
+{
+    return nfq_get_payload (nfad, data);
+}
 */
 import "C"
 
@@ -279,7 +286,7 @@ func build_payload(ptr_nfad *unsafe.Pointer) *Payload {
 
     ph := C.nfq_get_msg_packet_hdr(nfad)
     id := C.ntohl(C.uint32_t(ph.packet_id))
-    payload_len := C.nfq_get_payload(nfad, &payload_data)
+    payload_len := C._c_get_payload(nfad, &payload_data)
     if (payload_len >= 0) {
         data = C.GoBytes(unsafe.Pointer(payload_data), C.int(payload_len))
     }
