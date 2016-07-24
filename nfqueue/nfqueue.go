@@ -221,20 +221,6 @@ func (q *Queue) SetVerdict(id uint32, verdict int) error {
     return nil
 }
 
-//// SetVerdictMark issues a verdict for a packet, but a mark can be set
-////
-//// Every queued packet _must_ have a verdict specified by userspace.
-//func (q *Queue) SetVerdictMark(id uint32, verdict int, mark uint32) error {
-//    log.Printf("Setting verdict for packet %d: %d mark %lx\n",id,verdict,mark)
-//    C.nfq_set_verdict2(
-//        q.c_qh,
-//        C.u_int32_t(id),
-//        C.u_int32_t(verdict),
-//        C.u_int32_t(mark),
-//        0,nil)
-//    return nil
-//}
-
 // SetVerdictModified issues a verdict for a packet, but replaces the packet
 // with the provided one.
 //
@@ -250,23 +236,6 @@ func (q *Queue) SetVerdictModified(id uint32, verdict int, data []byte) error {
     )
     return nil
 }
-
-//// SetVerdictMarkModified issues a verdict for a packet, but replaces the
-//// packet with the provided one, and a mark can be set.
-////
-//// Every queued packet _must_ have a verdict specified by userspace.
-//func (q *Queue) SetVerdictMarkModified(id uint32, verdict int, mark uint32, data []byte) error {
-//    log.Printf("Setting verdict for NEW packet %d: %d mark %lx\n",id,verdict,mark)
-//    C.nfq_set_verdict2(
-//        q.c_qh,
-//        C.u_int32_t(id),
-//        C.u_int32_t(verdict),
-//        C.u_int32_t(mark),
-//        C.u_int32_t(len(data)),
-//        (*C.uchar)(unsafe.Pointer(&data[0])),
-//    )
-//    return nil
-//}
 
 // Payload is a structure describing a packet received from the kernel
 type Payload struct {
