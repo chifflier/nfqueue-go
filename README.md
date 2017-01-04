@@ -48,3 +48,7 @@ You have several options:
 - Use the CAP_NET_ADMIN capability in order to allow your application to receive from and to send packets to kernel-space:
 ```setcap 'cap_net_admin=+ep' /path/to/program```
 - Run your program as `root` and drop privileges
+
+## License
+
+This library is licensed under the GNU General Public License version 2, or (at your option) any later version.
