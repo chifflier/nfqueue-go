@@ -15,14 +15,16 @@ package nfqueue
 /*
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <linux/netfilter.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
 extern int GoCallbackWrapper(void *data, void *nfad);
+static inline ssize_t recv_to(int sockfd, void *buf, size_t len, int flags, int to);
 
 int _process_loop(struct nfq_handle *h,
-                  int fd,
+                  int *fd,
                   int flags,
                   int max_count) {
         int rv;
@@ -31,14 +33,63 @@ int _process_loop(struct nfq_handle *h,
 
         count = 0;
 
-        while ((rv = recv(fd, buf, sizeof(buf), flags)) >= 0) {
+        (*fd) = nfq_fd(h);
+        if (fd < 0) {
+            return -1;
+        }
+
+        //avoid ENOBUFS on read() operation, otherwise the while loop is interrupted.
+        int opt = 1;
+        rv = setsockopt(*fd, SOL_NETLINK, NETLINK_NO_ENOBUFS, &opt, sizeof(int));
+        if (rv == -1) {
+            return -1;
+        }
+
+        while (h && *fd != -1) {
+            rv = recv_to(*fd, buf, sizeof(buf), flags, 500);
+            if (rv > 0) {
                 nfq_handle_packet(h, buf, rv);
                 count++;
                 if (max_count > 0 && count >= max_count) {
-                        break;
+                    break;
                 }
+            } else if (rv < 0){
+                return rv;
+            }
         }
         return count;
+}
+
+void _stop_loop(int *fd) {
+    (*fd) = -1;
+}
+
+// recv with timeout using select
+static inline ssize_t recv_to(int sockfd, void *buf, size_t len, int flags, int to) {
+    int rv;
+    ssize_t result;
+    fd_set readset;
+
+    // Initialize timeval struct
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = to * 1000;
+
+    // Initialize socket set
+    FD_ZERO(&readset);
+    FD_SET(sockfd, &readset);
+
+    rv = select(sockfd+1, &readset, (fd_set *) 0, (fd_set *) 0, &timeout);
+    // Check status
+    if (rv < 0) {
+        return -1;
+    } else if (rv > 0 && FD_ISSET(sockfd, &readset)) {
+        // Receive (ensure that the socket is set to non blocking mode!)
+        result = recv(sockfd, buf, len, flags);
+        return result;
+    }
+
+    return 0;
 }
 
 int c_nfq_cb(struct nfq_q_handle *qh,
@@ -86,8 +137,9 @@ type Callback func(*Payload) int
 // Queue is an opaque structure describing a connection to a kernel NFQUEUE,
 // and the associated Go callback.
 type Queue struct {
-    c_h (*C.struct_nfq_handle)
+    c_h  (*C.struct_nfq_handle)
     c_qh (*C.struct_nfq_q_handle)
+    c_fd (*C.int)
 
     cb Callback
 }
@@ -101,6 +153,7 @@ func (q *Queue) Init() error {
         log.Println("nfq_open failed")
         return ErrOpenFailed
     }
+    q.c_fd = (*C.int)(C.malloc(C.sizeof_int))
     return nil
 }
 
@@ -116,6 +169,7 @@ func (q *Queue) Close() {
         C.nfq_close(q.c_h)
         q.c_h = nil
     }
+    C.free(unsafe.Pointer(q.c_fd))
 }
 
 // Bind binds a Queue to a given protocol family.
@@ -186,11 +240,9 @@ func (q *Queue) SetMode(mode uint8) error {
     return nil
 }
 
-// Main loop: TryRun starts an infinite loop, receiving kernel events
+// Main loop: Loop starts a loop, receiving kernel events
 // and processing packets using the callback function.
-//
-// BUG(TryRun): The TryRun function really is an infinite loop.
-func (q *Queue) TryRun() error {
+func (q *Queue) Loop() error {
     if (q.c_h == nil) {
         return ErrNotInitialized
     }
@@ -200,17 +252,19 @@ func (q *Queue) TryRun() error {
     if (q.cb == nil) {
         return ErrNotInitialized
     }
-    log.Println("Try Run")
-    fd := C.nfq_fd(q.c_h)
-    if (fd < 0) {
-        log.Println("nfq_fd failed")
+
+    log.Println("Start Loop")
+    ret := C._process_loop(q.c_h, q.c_fd, 0, -1)
+    if ret < 0 {
         return ErrRuntime
     }
-    // XXX
-    C._process_loop(q.c_h,fd,0,-1)
     return nil
 }
 
+func (q *Queue) StopLoop() {
+    log.Println("Stop Loop")
+    C._stop_loop(q.c_fd)
+}
 
 // Payload is a structure describing a packet received from the kernel
 type Payload struct {
