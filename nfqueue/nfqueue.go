@@ -226,6 +226,24 @@ func (q *Queue) CreateQueue(queue_num int) error {
     return nil
 }
 
+// Destroy a queue handle
+//
+// This also unbind from the nfqueue handler, so you don't have to call Unbind()
+// Note that errors from this function can usually be ignored.
+func (q *Queue) DestroyQueue() error {
+    if (q.c_qh == nil) {
+        return ErrNotInitialized
+    }
+    log.Println("Destroy queue")
+    rc := C.nfq_destroy_queue(q.c_qh)
+    if (rc < 0) {
+        log.Println("nfq_destroy_queue failed")
+        return ErrRuntime
+    }
+    q.c_qh = nil
+    return nil
+}
+
 // SetMode sets the amount of packet data that nfqueue copies to userspace
 //
 // Default mode is NFQNL_COPY_PACKET

@@ -48,6 +48,7 @@ func main() {
     // XXX Drop privileges here
 
     q.Loop()
+    q.DestroyQueue()
     q.Close()
     os.Exit(0)
 }
