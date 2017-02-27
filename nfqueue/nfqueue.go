@@ -258,6 +258,18 @@ func (q *Queue) SetMode(mode uint8) error {
     return nil
 }
 
+// SetQueueMaxLen fixes the number of packets the kernel will store before internally before dropping upcoming packets
+func (q *Queue) SetQueueMaxLen(maxlen uint32) error {
+    if (q.c_h == nil) {
+        return ErrNotInitialized
+    }
+    if (q.c_qh == nil) {
+        return ErrNotInitialized
+    }
+    C.nfq_set_queue_maxlen(q.c_qh,C.u_int32_t(maxlen))
+    return nil
+}
+
 // Main loop: Loop starts a loop, receiving kernel events
 // and processing packets using the callback function.
 func (q *Queue) Loop() error {
