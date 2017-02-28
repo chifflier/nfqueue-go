@@ -41,7 +41,6 @@ func main() {
     q.SetCallback(real_callback)
 
     q.Init()
-    defer q.Close()
 
     q.Unbind(syscall.AF_INET)
     q.Bind(syscall.AF_INET)
@@ -54,16 +53,14 @@ func main() {
         for sig := range c {
             // sig is a ^C, handle it
             _ = sig
-            q.Close()
-            os.Exit(0)
-            // XXX we should break gracefully from loop
+            q.StopLoop()
         }
     }()
 
     // XXX Drop privileges here
 
-    // XXX this should be the loop
-    q.TryRun()
-
-    fmt.Printf("hello, world\n")
+    q.Loop()
+    q.DestroyQueue()
+    q.Close()
+    os.Exit(0)
 }
