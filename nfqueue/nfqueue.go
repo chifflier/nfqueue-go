@@ -16,6 +16,7 @@ package nfqueue
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <arpa/inet.h>
 #include <linux/netfilter.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
@@ -81,7 +82,7 @@ static inline ssize_t recv_to(int sockfd, void *buf, size_t len, int flags, int 
 
     rv = select(sockfd+1, &readset, (fd_set *) 0, (fd_set *) 0, &timeout);
     // Check status
-    if (rv < 0) {
+    if (rv < 0 && errno != EINTR) {
         return -1;
     } else if (rv > 0 && FD_ISSET(sockfd, &readset)) {
         // Receive (ensure that the socket is set to non blocking mode!)
