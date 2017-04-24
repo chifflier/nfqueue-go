@@ -127,8 +127,9 @@ var NFQNL_COPY_PACKET uint8 = C.NFQNL_COPY_PACKET
 // The callback receives the NFQUEUE ID of the packet, and
 // the packet payload.
 // Packet data start from the IP layer (ethernet information are not included).
-// It should return -1 on error to stop processing or >= 0 otherwise.
-type Callback func(*Payload) int
+// It should return an error to stop processing.
+// This function _must_ set a verdict for every packet.
+type Callback func(*Payload) error
 
 // Queue is an opaque structure describing a connection to a kernel NFQUEUE,
 // and the associated Go callback.

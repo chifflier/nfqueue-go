@@ -9,7 +9,7 @@ import (
     "syscall"
 )
 
-func real_callback(payload *nfqueue.Payload) int {
+func real_callback(payload *nfqueue.Payload) error {
     fmt.Println("Real callback")
     fmt.Printf("  id: %d\n", payload.Id)
     fmt.Printf("  mark: %d\n", payload.GetNFMark())
@@ -18,7 +18,7 @@ func real_callback(payload *nfqueue.Payload) int {
     fmt.Println(hex.Dump(payload.Data))
     fmt.Println("-- ")
     payload.SetVerdict(nfqueue.NF_ACCEPT)
-    return 0
+    return nil
 }
 
 func main() {
