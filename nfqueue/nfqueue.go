@@ -5,7 +5,6 @@
 // This provides an easy way to filter packets from userspace, and use tools
 // or libraries that are not accessible from kernelspace.
 //
-// BUG(nfqueue): This package currently displays lots of debug information
 package nfqueue
 
 // XXX we should use something like
@@ -109,7 +108,6 @@ import "C"
 
 import (
     "errors"
-    "log"
     "unsafe"
 )
 
@@ -147,10 +145,8 @@ type Queue struct {
 // Init creates a netfilter queue which can be used to receive packets
 // from the kernel.
 func (q *Queue) Init() error {
-    log.Println("Opening queue")
     q.c_h = C.nfq_open()
     if (q.c_h == nil) {
-        log.Println("nfq_open failed")
         return ErrOpenFailed
     }
     q.c_fd = (*C.int)(C.malloc(C.sizeof_int))
@@ -165,7 +161,6 @@ func (q *Queue) SetCallback(cb Callback) error {
 
 func (q *Queue) Close() {
     if (q.c_h != nil) {
-        log.Println("Closing queue")
         C.nfq_close(q.c_h)
         q.c_h = nil
     }
@@ -179,7 +174,6 @@ func (q *Queue) Bind(af_family int) error {
     if (q.c_h == nil) {
         return ErrNotInitialized
     }
-    log.Println("Binding to selected family")
     /* Errors in nfq_bind_pf are non-fatal ...
      * This function just tells the kernel that nfnetlink_queue is
      * the chosen module to queue packets to userspace.
@@ -195,10 +189,8 @@ func (q *Queue) Unbind(af_family int) error {
     if (q.c_h == nil) {
         return ErrNotInitialized
     }
-    log.Println("Unbinding to selected family")
     rc := C.nfq_unbind_pf(q.c_h,C.u_int16_t(af_family))
     if (rc < 0) {
-        log.Println("nfq_unbind_pf failed")
         return ErrRuntime
     }
     return nil
@@ -215,10 +207,8 @@ func (q *Queue) CreateQueue(queue_num int) error {
     if (q.cb == nil) {
         return ErrNotInitialized
     }
-    log.Println("Creating queue")
     q.c_qh = C.nfq_create_queue(q.c_h,C.u_int16_t(queue_num),(*C.nfq_callback)(C.c_nfq_cb),unsafe.Pointer(q))
     if (q.c_qh == nil) {
-        log.Println("nfq_create_queue failed")
         return ErrRuntime
     }
     // Default mode
@@ -234,10 +224,8 @@ func (q *Queue) DestroyQueue() error {
     if (q.c_qh == nil) {
         return ErrNotInitialized
     }
-    log.Println("Destroy queue")
     rc := C.nfq_destroy_queue(q.c_qh)
     if (rc < 0) {
-        log.Println("nfq_destroy_queue failed")
         return ErrRuntime
     }
     q.c_qh = nil
@@ -283,7 +271,6 @@ func (q *Queue) Loop() error {
         return ErrNotInitialized
     }
 
-    log.Println("Start Loop")
     ret := C._process_loop(q.c_h, q.c_fd, 0, -1)
     if ret < 0 {
         return ErrRuntime
@@ -292,7 +279,6 @@ func (q *Queue) Loop() error {
 }
 
 func (q *Queue) StopLoop() {
-    log.Println("Stop Loop")
     C._stop_loop(q.c_fd)
 }
 
@@ -333,7 +319,6 @@ func build_payload(c_qh *C.struct_nfq_q_handle, ptr_nfad *unsafe.Pointer) *Paylo
 //
 // Every queued packet _must_ have a verdict specified by userspace.
 func (p *Payload) SetVerdict(verdict int) error {
-    log.Printf("Setting verdict for packet %d: %d\n",p.Id,verdict)
     C.nfq_set_verdict(p.c_qh,C.u_int32_t(p.Id),C.u_int32_t(verdict),0,nil)
     return nil
 }
@@ -343,7 +328,6 @@ func (p *Payload) SetVerdict(verdict int) error {
 //
 // Every queued packet _must_ have a verdict specified by userspace.
 func (p *Payload) SetVerdictModified(verdict int, data []byte) error {
-    log.Printf("Setting verdict for NEW packet %d: %d\n",p.Id,verdict)
     C.nfq_set_verdict(
         p.c_qh,
         C.u_int32_t(p.Id),
