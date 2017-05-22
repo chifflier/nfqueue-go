@@ -354,6 +354,17 @@ func (p *Payload) SetVerdictModified(verdict int, data []byte) error {
     return nil
 }
 
+// Returns the packet HW address
+func (p *Payload) GetSrcHwAddr() []byte {
+    hwInfo := C.nfq_get_packet_hw(p.nfad)
+    addrl := int(C.ntohs(C.uint16_t(hwInfo.hw_addrlen)))
+    res := make([]byte, addrl)
+    for i := 0; i < addrl; i++  {
+        res[i] = byte(hwInfo.hw_addr[i])
+    }
+    return res
+}
+
 // Returns the packet mark
 func (p *Payload) GetNFMark() uint32 {
     return uint32(C.nfq_get_nfmark(p.nfad))
